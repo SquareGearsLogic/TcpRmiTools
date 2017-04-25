@@ -14,32 +14,34 @@ javac *.java
 
 Using TCP Tools
 -----------
-listen on all network interfaces
+listen on all network interfaces.
 ```bash
 java TCPServer [PORT]
 ```
-listen on specific network interface only
+listen on specific network interface only.
 ```bash
 java TCPServer [HOST] [PORT]
 ```
 
-connect Client on specific network interface
+connect Client on specific network interface.
 ```bash
 java TCPClient [HOST] [PORT]
 ```
 
 Using RMI Tools
 -----------
-listen on all network interfaces
+listen on all network interfaces.
+Remote Object will be returned on a random port between 0 and 65535.
 ```bash
 java -cp . RmiServer [PORT]
 ```
-listen on specific network interface only
+listen on specific network interface only.
+All communication goes through a single port.
 ```bash
 java -cp . RmiServer [HOST] [PORT]
 ```
 
-connect Client on specific network interface
+connect Client on specific network interface.
 ```bash
 java -cp . RmiClient [HOST] [PORT]
 ```

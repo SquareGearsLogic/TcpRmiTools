@@ -1,10 +1,20 @@
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 
-public class RmiService extends UnicastRemoteObject implements IRmi {
-	private static final long serialVersionUID = 1L;
+import java.rmi.server.RMIClientSocketFactory;
+import java.rmi.server.RMIServerSocketFactory;
 
+public class RmiService extends UnicastRemoteObject implements IRmi {
+	
 	public RmiService() throws RemoteException { super(); }
+	
+	public RmiService(int port) throws RemoteException { super(port); }
+	
+	public RmiService(int port, RMIClientSocketFactory csf, RMIServerSocketFactory ssf)
+	throws RemoteException
+	{
+		super(port, csf, ssf);
+	}
 
 	@Override
 	public Object execute(String msg) throws RemoteException {

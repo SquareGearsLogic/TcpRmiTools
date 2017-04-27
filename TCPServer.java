@@ -3,8 +3,8 @@ import java.net.*;
 
 class TCPServer
 {
-   public static void main(String argv[]) throws Exception
-    {
+	public static void main(String argv[]) throws Exception
+	{
 		String reply = "Hi, client!";
 		System.out.println("Starting server...");
 		ServerSocket welcomeSocket = null;
@@ -15,20 +15,21 @@ class TCPServer
 			welcomeSocket = new ServerSocket(Integer.parseInt(argv[0]));
 		}
 		//welcomeSocket.setSoTimeout(5000);
-		
+
 		while(true)
 		{
 			System.out.println("Ready.");
 			Socket connectionSocket = welcomeSocket.accept();
 			BufferedReader inFromClient = new BufferedReader(new InputStreamReader(connectionSocket.getInputStream()));
 			PrintWriter outToClient = new PrintWriter(connectionSocket.getOutputStream(), true);
-			
+
 			System.out.println("Reading incoming message...");
 			String request = "";
 			try{
 				request = inFromClient.readLine();
 				System.out.println("Received: \"" + request + "\"\nSending reply...");
 				outToClient.println(reply);
+				// For other writers:
 				//outToClient.write(reply + "\n");
 				//outToClient.newLine();
 				//outToClient.flush();
@@ -37,5 +38,5 @@ class TCPServer
 				System.out.println("[ERROR] request = " + request + "\n" + t);
 			}
 		}
-    }
+	}
 }

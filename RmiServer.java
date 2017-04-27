@@ -14,6 +14,23 @@ import java.rmi.server.RMIServerSocketFactory;
 class RmiServer
 {
 	private interface MyServerSocketFactory extends RMIServerSocketFactory{InetAddress getHost();}
+	private static RMIServerSocketFactory getServerFactory(final InetAddress host)
+	{
+		return new MyServerSocketFactory(){
+			private InetAddress thisHost = host;
+			public InetAddress getHost(){return thisHost;}
+			@Override
+			public ServerSocket createServerSocket(int port) throws java.io.IOException
+			{
+				return new java.net.ServerSocket(port, 0, thisHost);
+			}
+			@Override
+			public boolean equals(Object obj) {
+				return (getClass() == obj.getClass()
+				&& ((MyServerSocketFactory)obj).getHost().equals(thisHost));
+			}
+		};
+	}
 
 	public static void main(String argv[]) throws Exception
 	{
@@ -35,31 +52,27 @@ class RmiServer
 		RmiService rmiService = null;
 		Registry rmiRegistry = null;
 		if (argv.length==2){
-			System.out.println("Assembling LocateRegistry to run all packets through port " + serverRmiSevicePort);
-			// Client socket, is usually configured on client side.
-			RMIClientSocketFactory clientSocketFactory = null;//RMISocketFactory.getDefaultSocketFactory();
-			RMIServerSocketFactory serverSocketFactory = new MyServerSocketFactory(){
-				private InetAddress thisHost = host;
-				public InetAddress getHost(){return thisHost;}
-				@Override
-				public ServerSocket createServerSocket(int port) throws java.io.IOException
-				{
-					return new java.net.ServerSocket(port, 0, thisHost);
-				}
-				@Override
-				public boolean equals(Object obj) {
-					return (getClass() == obj.getClass()
-					&& ((MyServerSocketFactory)obj).getHost().equals(thisHost));
-				}
-			};
-			rmiRegistry = LocateRegistry.createRegistry(port, clientSocketFactory, serverSocketFactory);
-			rmiService = new RmiService(port, clientSocketFactory, serverSocketFactory);
-			UnicastRemoteObject.unexportObject(rmiService, true);
-			// For non-UnicastRemoteObject use
-			//rmiService = (RmiService)UnicastRemoteObject.exportObject(new RmiService(), port, clientSocketFactory, serverSocketFactory);
-		} else {
-			System.out.println("Remote Object will be returned on a random port between 0 and 65535.");
-			rmiRegistry = LocateRegistry.createRegistry(Integer.parseInt(serverRmiSevicePort));
+			if ( serverRmiSeviceHost.equals("localhost") ){
+				System.out.println("Assembling to run all packets through single port on all interfaces " + serverRmiSevicePort);
+				rmiRegistry = LocateRegistry.createRegistry(port);	// Registry Port.
+				rmiService = new RmiService(port); 					// Remote Objects Port.
+			} else {
+				System.out.println("Assembling to run all packets through single port on single interface " + serverRmiSeviceHost + ":" + serverRmiSevicePort);
+				// RMIClientSocketFactory is driven by client.
+				RMIClientSocketFactory clientSocketFactory = null; //RMISocketFactory.getDefaultSocketFactory();
+				System.setProperty("java.rmi.server.hostname", serverRmiSeviceHost);			// Remote Objects network interface.
+				RMIServerSocketFactory serverSocketFactory = getServerFactory(host);			// Registry network interface.
+				rmiRegistry = LocateRegistry.createRegistry(port, null, serverSocketFactory);	// Registry Port.
+				rmiService = new RmiService(port, 												// Remote Objects Port.
+						clientSocketFactory,
+						serverSocketFactory);
+				// For non-UnicastRemoteObject use
+				// if (UnicastRemoteObject.unexportObject(rmiService, true))
+				// 	rmiService = (RmiService)UnicastRemoteObject.exportObject(new RmiService(), port, clientSocketFactory, serverSocketFactory);
+			}
+		} else if (argv.length==1){
+			System.out.println("Remote Object will be returned on a random port between 0 and 65535 and random interface.");
+			rmiRegistry = LocateRegistry.createRegistry(port); // Registry Port is where we connect to.
 			rmiService = new RmiService();
 		}
 		rmiRegistry.rebind(serverRmiSeviceName, rmiService);

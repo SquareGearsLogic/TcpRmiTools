@@ -1,3 +1,5 @@
+import java.net.Socket;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.InetAddress;
 
@@ -13,6 +15,39 @@ import java.rmi.server.RMIServerSocketFactory;
 
 class RmiServer
 {
+	private interface MyClientSocketFactory extends RMIClientSocketFactory{InetSocketAddress getHost();}
+	private static RMIClientSocketFactory getClientFactory(final InetSocketAddress host, final Integer clientTimeout)
+	{
+		if (clientTimeout == null){
+			// By default Java knows how to establish connection with rmi server, so in most cases this is the best choice!
+			return null;
+		} else if (clientTimeout.equals(0)){
+			// Teaching rmi client how to establish connection to this specific rmi server.
+			return RMISocketFactory.getDefaultSocketFactory();
+		}
+		
+		// This fancy way is used to itemize socket details for client, like dead-server timeout, SO_LINGER, etc.
+		return new MyClientSocketFactory(){
+			private InetSocketAddress thisHost = host;
+			private int timeoutMillis = clientTimeout;
+			public InetSocketAddress getHost(){return thisHost;}
+			@Override
+			public Socket createSocket(String host, int port) throws java.io.IOException
+			{
+				Socket socket = new Socket();
+				socket.setSoTimeout( timeoutMillis );
+				// socket.setSoLinger( false, 0 );
+				socket.connect( new InetSocketAddress( host, port ), timeoutMillis );
+				return socket;
+			}
+			@Override
+			public boolean equals(Object obj) {
+				return (getClass() == obj.getClass()
+				&& ((MyClientSocketFactory)obj).getHost().equals(thisHost));
+			}
+		};
+	}
+	
 	private interface MyServerSocketFactory extends RMIServerSocketFactory{InetAddress getHost();}
 	private static RMIServerSocketFactory getServerFactory(final InetAddress host)
 	{
@@ -47,6 +82,8 @@ class RmiServer
 		}
 		final InetAddress host = InetAddress.getByName(serverRmiSeviceHost);
 		final Integer port = Integer.parseInt(serverRmiSevicePort);
+		final InetSocketAddress clientSocketAddr = new InetSocketAddress(serverRmiSeviceHost, port);
+		final Integer clientTimeout = null; // "null" - use client's socket; "0" - create default socket; or set any timeout in ms to create a fancy socket. 
 
 		System.out.println("Starting RMI Service on [" + "rmi://" + serverRmiSeviceHost + ":" + serverRmiSevicePort + "/" + serverRmiSeviceName + "]...");
 		RmiService rmiService = null;
@@ -58,8 +95,7 @@ class RmiServer
 				rmiService = new RmiService(port); 					// Remote Objects Port.
 			} else {
 				System.out.println("Assembling to run all packets through single port on single interface " + serverRmiSeviceHost + ":" + serverRmiSevicePort);
-				// RMIClientSocketFactory is driven by client.
-				RMIClientSocketFactory clientSocketFactory = null; //RMISocketFactory.getDefaultSocketFactory();
+				RMIClientSocketFactory clientSocketFactory = getClientFactory(clientSocketAddr, clientTimeout);
 				System.setProperty("java.rmi.server.hostname", serverRmiSeviceHost);			// Remote Objects network interface.
 				RMIServerSocketFactory serverSocketFactory = getServerFactory(host);			// Registry network interface.
 				rmiRegistry = LocateRegistry.createRegistry(port, null, serverSocketFactory);	// Registry Port.
